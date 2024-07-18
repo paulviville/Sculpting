@@ -4,6 +4,7 @@ import * as Meshes from './meshes.js';
 import { loadCMap2 } from './CMapJS/IO/SurfaceFormats/CMap2IO.js';
 
 import { OrbitControls } from './CMapJS/Libs/OrbitsControls.js';
+import MeshViewer from './MeshViewer.js';
 import MeshHandler from './MeshHandler.js';
 
 import { GUI } from './CMapJS/Libs/dat.gui.module.js';
@@ -42,6 +43,7 @@ let pointLight = new THREE.PointLight(0xFFFFFF, 1);
 pointLight.position.set(10,8,5);
 scene.add(pointLight);
 
+let meshViewer;
 let meshHandler;
 let cmap;
 
@@ -49,20 +51,20 @@ const settings = new (function() {
 	this.showVertex = true;
 	this.vertexSize = 0.01;
 	this.vertexColor = 0x4EA6BA;
-	this.updateVertexColor = function (color) {meshHandler.setVertexColor(color)};
-	this.updateVertexVisibility = function (visible) {meshHandler.vertexVisibility(visible)};
+	this.updateVertexColor = function (color) {meshViewer.setVertexColor(color)};
+	this.updateVertexVisibility = function (visible) {meshViewer.vertexVisibility(visible)};
 	this.showEdge = true;
 	this.edgeSize = 1.5;
 	this.edgeColor = 0x0A0A20;
-	this.updateEdgeColor = function (color) {meshHandler.setEdgeColor(color)};
-	this.updateEdgeVisibility = function (visible) {meshHandler.edgeVisibility(visible)};
+	this.updateEdgeColor = function (color) {meshViewer.setEdgeColor(color)};
+	this.updateEdgeVisibility = function (visible) {meshViewer.edgeVisibility(visible)};
 	this.showFace = true;
 	this.faceColor = 0x66AABB;
-	this.updateFaceColor = function (color) {meshHandler.setFaceColor(color)};
-	this.updateFaceVisibility = function (visible) {meshHandler.faceVisibility(visible)};
+	this.updateFaceColor = function (color) {meshViewer.setFaceColor(color)};
+	this.updateFaceVisibility = function (visible) {meshViewer.faceVisibility(visible)};
 
-	this.vertexResize = function (size) {meshHandler.resizeVertices(size)};
-	this.edgeResize = function (size) {meshHandler.resizeEdges(size)};
+	this.vertexResize = function (size) {meshViewer.resizeVertices(size)};
+	this.edgeResize = function (size) {meshViewer.resizeEdges(size)};
 
 
 	this.mesh = 'tetrahedron';
@@ -73,9 +75,14 @@ const settings = new (function() {
 
 function loadMesh (mesh) {
 	cmap = loadCMap2('off', Meshes[mesh + '_off']);
-	if(meshHandler)
-		meshHandler.delete();
-	meshHandler = new MeshHandler(cmap, {
+
+	meshHandler = new MeshHandler(cmap);
+	testing()
+	console.log(meshHandler)
+
+	if(meshViewer)
+		meshViewer.delete();
+	meshViewer = new MeshViewer(cmap, {
 		vertexColor: settings.vertexColor,
 		edgeColor: settings.edgeColor,
 		faceColor: settings.faceColor,
@@ -83,12 +90,21 @@ function loadMesh (mesh) {
 		edgeSize: settings.edgeSize,
 
 	});
-	meshHandler.initialize({
+	meshViewer.initialize({
 		vertices: settings.showVertex,
 		edges: settings.showEdge,
 		faces: settings.showFace,
 	});
-	meshHandler.addMeshesTo(scene);
+	meshViewer.addMeshesTo(scene);
+
+
+}
+
+function testing() {
+	meshHandler.subdivide()
+	meshHandler.subdivide()
+	meshHandler.subdivide()
+
 }
 
 function subdivideMesh (scheme) {
@@ -115,7 +131,7 @@ function subdivideMesh (scheme) {
 			break;
 	}
 	console.log(cmap.nbCells(cmap.vertex))
-	meshHandler.updateMeshes();
+	meshViewer.updateMeshes();
 }
 
 const gui = new GUI({autoPlace: true, hideable: true});
