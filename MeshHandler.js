@@ -1,5 +1,6 @@
 import CMap2 from './CMapJS/CMap/CMap2.js';
 import {Vector3} from './CMapJS/Libs/three.module.js';
+import TransformTool from './TransformTool.js';
 
 /**
  * @class Generation - a container of subdivision iteration data
@@ -175,7 +176,7 @@ export default class MeshHandler {
     }
 
     /**
-     * Computes post transform positions for all vertices of a generation
+     * Computes post transform positions for all vertices
      * @private
      * @param {Generation} generation 
      */
@@ -184,8 +185,11 @@ export default class MeshHandler {
             this.#position[vid] ??= new Vector3;
             this.#position[vid].copy(this.#position0[vid]);
 
-            this.#applyTransform(this.#position[vid], generation.transforms[vid]);
         });
+
+        generation.transforms.forEach((transform, vid) => {
+            this.#applyTransform(this.#position[vid], transform);
+        })
     }
 
     /**
@@ -211,11 +215,67 @@ export default class MeshHandler {
         this.#computeGenerationPositions( newGeneration );
     }
 
-    setTransform ( vid, generation, transform ) {
-        generation.transforms[vid].copy(transform);
+    /**
+     * Set the vertex transform at the specified generation
+     * @param {number} vid - vertex id
+     * @param {number} generationId - generation id
+     * @param {Vector3} transform - transform to copy
+     */
+    setTransform ( vid, generationId, transform ) {
+        this.#generations[generationId].transforms[vid] ??= new Vector3;
+        this.#generations[generationId].transforms[vid].copy(transform);
     }
 
-    // updatePositions ( ) {
+    getTransform ( vid, generationId) {
+        return this.#generations[generationId].transforms[vid];
+    }
 
-    // }
+    /**
+     * Updates positions of all vertices cascading from input generation
+     * @param {number} generationId 
+     */
+    updatePositions ( generationId = 0 ) {
+        let i = generationId;
+
+        /// maybe not only for 0, but for generationId
+        /// switch loop to (i = i + 1;...)
+        if(i == 0) {
+            this.#computeGenerationPositions(this.#generations[0]);
+            ++i;
+        }
+        for(i; i < this.#generations.length; ++i) {
+            this.#computeGenerationInitialPositions(this.#generations[i]);
+            this.#computeGenerationPositions(this.#generations[i]);
+        }
+    }
+
+    getInitialPositions ( vertices ) {
+        return vertices.map(vid => {
+            return this.#position0[vid];
+        });      
+    }
+
+    getTransforms ( vertices ) {
+        return vertices.map(vid => {
+            return this.#position0[vid];
+        });      
+    }
+
+    getVertices ( generationId = 0 ) {
+        const vertices = []
+
+        for(let i = 0; i <= generationId; ++i) {
+            vertices.push(...this.#generations[i].vertices);
+        }
+
+        return vertices;
+    }
+
+    /**
+     * Returns all vertices, positions, and transforms of given generation
+     * @param {number} generationId 
+     */
+    createTransformTool ( generationId = 0 ) {
+        return new TransformTool(this, generationId);
+    }
 }

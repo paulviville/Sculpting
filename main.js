@@ -48,13 +48,13 @@ let meshHandler;
 let cmap;
 
 const settings = new (function() {
-	this.showVertex = true;
+	this.showVertex = false;
 	this.vertexSize = 0.01;
 	this.vertexColor = 0x4EA6BA;
 	this.updateVertexColor = function (color) {meshViewer.setVertexColor(color)};
 	this.updateVertexVisibility = function (visible) {meshViewer.vertexVisibility(visible)};
 	this.showEdge = true;
-	this.edgeSize = 1.5;
+	this.edgeSize = 0.5;
 	this.edgeColor = 0x0A0A20;
 	this.updateEdgeColor = function (color) {meshViewer.setEdgeColor(color)};
 	this.updateEdgeVisibility = function (visible) {meshViewer.edgeVisibility(visible)};
@@ -101,10 +101,18 @@ function loadMesh (mesh) {
 }
 
 function testing() {
-	meshHandler.subdivide()
-	meshHandler.subdivide()
-	meshHandler.subdivide()
-
+	// meshHandler.subdivide()
+	// meshHandler.subdivide()
+	// meshHandler.subdivide()
+	// meshHandler.subdivide()
+	// meshHandler.subdivide()
+	// meshHandler.subdivide()
+	// meshHandler.setTransform(0, 1, new THREE.Vector3(0.5, 0.2, 0.1))
+	// meshHandler.setTransform(4, 1, new THREE.Vector3(0.5, 0.2, 0.1))
+	// meshHandler.setTransform(7, 1, new THREE.Vector3(0.5, 0.2, 0.1))
+	meshHandler.updatePositions();
+	const transformTool = meshHandler.createTransformTool(0);
+	transformTool.addTo(scene)
 }
 
 function subdivideMesh (scheme) {
