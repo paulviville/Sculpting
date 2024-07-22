@@ -25,6 +25,7 @@ export default function MeshViewer (mesh, params = {}) {
 		if(params.faces) {
 			renderer.faces.create({color: faceColor, side: THREE.DoubleSide}); 
 			facesMesh = renderer.faces.mesh;
+			console.log(facesMesh)
 		}
 	};
 
@@ -90,6 +91,13 @@ export default function MeshViewer (mesh, params = {}) {
 		renderer.faces.update();
 		facesMesh = renderer.faces.mesh;
 		facesMesh.visible = visible;
+	}
+
+	this.updateFacesPos = function() {
+		renderer.faces.update_pos();
+		renderer.faces.mesh.geometry.computeFaceNormals();
+		renderer.faces.mesh.geometry.normalsNeedUpdate = true;
+		// console.log(renderer.faces)
 	}
 
 	this.updateMeshes = function () {

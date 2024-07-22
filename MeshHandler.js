@@ -12,13 +12,24 @@ class Generation {
      */
     vertices;
     /**
+     * Array containing the parent vertex ids of the generation
+     * @type {number}
+     */
+    parentVertices;
+    /**
      * Attribute containing the position transformation of the generation
      * @type {Attribute}
      */
     transforms;
-    
-    constructor ( vertices, transforms ) {
+    /** Attribute containing the position of vertices at this generation
+     * @type {Attribute}
+    */
+    position;
+
+    constructor ( vertices, parentVertices, position, transforms ) {
         this.vertices = vertices;
+        this.parentVertices = parentVertices;
+        this.position = position;
         this.transforms = transforms;
     }
 }
@@ -82,18 +93,21 @@ export default class MeshHandler {
             verticesGen0.push(vid);
             this.#position0[vid] = this.#position[vid].clone();
         });
-        this.#newGeneration( verticesGen0 );
+        this.#newGeneration( verticesGen0, [], this.#position0 );
     }
 
     /**
      * Creates a new generation from the given vertices
      * @param {Array} vertices - vertex ids of the new generation
      */
-    #newGeneration( vertices ) {
+    #newGeneration( vertices, parentVertices, position0 ) {
+        const generationId = this.#generations.length;
         const transforms = this.#mesh.addAttribute(this.#mesh.vertex, `transforms${this.#generations.length}`);
-        const newGeneration = new Generation(vertices, transforms);
+        const position = position0 ?? this.#mesh.addAttribute(this.#mesh.vertex, `position0_${this.#generations.length}`);;
+        const newGeneration = new Generation(vertices, parentVertices, position, transforms);
         this.#generations.push( newGeneration );
-        return newGeneration;
+        console.log(newGeneration   )
+        return generationId;
     }
 
     /**
@@ -151,9 +165,12 @@ export default class MeshHandler {
     /**
      * Computes initial positions for all vertices of a generation
      * @private
-     * @param {Generation} generation 
+     * @param {number} generationId 
      */
-    #computeGenerationInitialPositions ( generation ) {
+    #computeGenerationInitialPositions ( generationId ) {
+        const parentGeneration = this.#generations[generationId - 1];
+
+        const generation = this.#generations[generationId];
         generation.vertices.forEach(vid => {
             this.#position0[vid] ??= new Vector3;
 
@@ -162,34 +179,50 @@ export default class MeshHandler {
 
             vpos.set(0,0,0);
 
-            vpos.addScaledVector(this.#position[parents[0]], W0);
-            vpos.addScaledVector(this.#position[parents[1]], W0);
+            vpos.addScaledVector(parentGeneration.position[parents[0]], W0);
+            vpos.addScaledVector(parentGeneration.position[parents[1]], W0);
 
-            vpos.addScaledVector(this.#position[parents[2]], W1);
-            vpos.addScaledVector(this.#position[parents[3]], W1);
+            vpos.addScaledVector(parentGeneration.position[parents[2]], W1);
+            vpos.addScaledVector(parentGeneration.position[parents[3]], W1);
 
-            vpos.addScaledVector(this.#position[parents[4]], W2);
-            vpos.addScaledVector(this.#position[parents[5]], W2);
-            vpos.addScaledVector(this.#position[parents[6]], W2);
-            vpos.addScaledVector(this.#position[parents[7]], W2);
+            vpos.addScaledVector(parentGeneration.position[parents[4]], W2);
+            vpos.addScaledVector(parentGeneration.position[parents[5]], W2);
+            vpos.addScaledVector(parentGeneration.position[parents[6]], W2);
+            vpos.addScaledVector(parentGeneration.position[parents[7]], W2);
         });
+
+        // generation.parentVertices.forEach(vid => {
+
+        // });
+
     }
 
     /**
      * Computes post transform positions for all vertices
      * @private
-     * @param {Generation} generation 
+     * @param {number} generationId 
      */
-    #computeGenerationPositions ( generation ) {
+    #computeGenerationPositions ( generationId ) {
+        const parentGeneration = this.#generations[generationId - 1];
+        const generation = this.#generations[generationId];
+
+        console.log(generation, parentGeneration)
+
         generation.vertices.forEach(vid => {
             this.#position[vid] ??= new Vector3;
-            this.#position[vid].copy(this.#position0[vid]);
+            generation.position[vid] ??= new Vector3;
+            generation.position[vid].copy(this.#position0[vid]);
+        });
 
+        generation.parentVertices.forEach(vid => {
+            generation.position[vid] ??= new Vector3;
+            generation.position[vid].copy(parentGeneration.position[vid]);
         });
 
         generation.transforms.forEach((transform, vid) => {
-            this.#applyTransform(this.#position[vid], transform);
-        })
+            this.#applyTransform(generation.position[vid], transform);
+            console.log(generationId)
+        });
     }
 
     /**
@@ -208,11 +241,14 @@ export default class MeshHandler {
      * Applies a butterfly subdivision to the mesh and computes positions of new vertices
      */
     subdivide ( ) {
+        const parentVertices = this.#mesh.cache(this.#mesh.vertex);
+        const parentVerticesIds = parentVertices.map(vd => this.#mesh.cell(this.#mesh.vertex, vd));
 	    const newVertices = this.#topologicalButterfly();
         const newVerticesIds = newVertices.map(vd => this.#mesh.cell(this.#mesh.vertex, vd));
-        const newGeneration = this.#newGeneration( newVerticesIds );
+        const newGeneration = this.#newGeneration( newVerticesIds, parentVerticesIds );
         this.#computeGenerationInitialPositions( newGeneration );
-        this.#computeGenerationPositions( newGeneration );
+        // this.#computeGenerationPositions( newGeneration );
+        this.updatePositions();
     }
 
     /**
@@ -224,9 +260,17 @@ export default class MeshHandler {
     setTransform ( vid, generationId, transform ) {
         this.#generations[generationId].transforms[vid] ??= new Vector3;
         this.#generations[generationId].transforms[vid].copy(transform);
+
+        // console.log( this.#generations[generationId].transforms, this.#position, this.#position0)
     }
 
-    getTransform ( vid, generationId) {
+    /**
+     * Get the vertex transform at the specified generation
+     * @param {number} vid - vertex id
+     * @param {number} generationId - generation id
+     * @return {Vector3 | undefined} transform of the vertex
+     */
+    getTransform ( vid, generationId ) {
         return this.#generations[generationId].transforms[vid];
     }
 
@@ -240,24 +284,37 @@ export default class MeshHandler {
         /// maybe not only for 0, but for generationId
         /// switch loop to (i = i + 1;...)
         if(i == 0) {
-            this.#computeGenerationPositions(this.#generations[0]);
+            // this.#computeGenerationPositions(i);
+            this.#computeGenerationPositions(i);
             ++i;
         }
         for(i; i < this.#generations.length; ++i) {
-            this.#computeGenerationInitialPositions(this.#generations[i]);
-            this.#computeGenerationPositions(this.#generations[i]);
+            this.#computeGenerationInitialPositions(i);
+            // this.#computeGenerationPositions(i);
+            this.#computeGenerationPositions(i);
         }
+
+        const finalGeneration = this.#generations[this.#generations.length - 1]
+        finalGeneration.vertices.forEach(vid => {
+            this.#position[vid] ??= new Vector3();
+            this.#position[vid].copy(finalGeneration.position[vid]);
+        });
+
+        finalGeneration.parentVertices.forEach(vid => {
+            this.#position[vid] ??= new Vector3();
+            this.#position[vid].copy(finalGeneration.position[vid]);
+        });
     }
 
     getInitialPositions ( vertices ) {
         return vertices.map(vid => {
-            return this.#position0[vid];
+            return this.#position0[vid].clone();
         });      
     }
 
-    getTransforms ( vertices ) {
+    getTransforms ( vertices, generationId = 0 ) {
         return vertices.map(vid => {
-            return this.#position0[vid];
+            return this.#generations[generationId].transforms[vid]?.clone();
         });      
     }
 

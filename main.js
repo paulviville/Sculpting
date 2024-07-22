@@ -53,7 +53,7 @@ const settings = new (function() {
 	this.vertexColor = 0x4EA6BA;
 	this.updateVertexColor = function (color) {meshViewer.setVertexColor(color)};
 	this.updateVertexVisibility = function (visible) {meshViewer.vertexVisibility(visible)};
-	this.showEdge = true;
+	this.showEdge = false;
 	this.edgeSize = 0.5;
 	this.edgeColor = 0x0A0A20;
 	this.updateEdgeColor = function (color) {meshViewer.setEdgeColor(color)};
@@ -67,9 +67,13 @@ const settings = new (function() {
 	this.edgeResize = function (size) {meshViewer.resizeEdges(size)};
 
 
-	this.mesh = 'tetrahedron';
+	this.mesh = 'octahedron';
 	this.subdivision = 'catmullClark';
-	this.apply = function () {subdivideMesh(this.subdivision)};
+	// this.apply = function () {subdivideMesh(this.subdivision)};
+	this.apply = function () {
+		meshHandler.subdivide()
+		meshViewer.updateMeshes()
+	};
 	
 });
 
@@ -79,6 +83,11 @@ function loadMesh (mesh) {
 	meshHandler = new MeshHandler(cmap);
 	testing()
 	console.log(meshHandler)
+	meshHandler.subdivide()
+	meshHandler.subdivide()
+	meshHandler.subdivide()
+	meshHandler.subdivide()
+	meshHandler.updatePositions();
 
 	if(meshViewer)
 		meshViewer.delete();
@@ -97,7 +106,19 @@ function loadMesh (mesh) {
 	});
 	meshViewer.addMeshesTo(scene);
 
+	// const transformTool = meshHandler.createTransformTool(0);
+	// transformTool.addTo(scene)
+	// transformTool.initializeTransformControl(camera, renderer.domElement, render, controls, meshViewer);
 
+	// transformTool.show()
+	// transformTool.hide()
+
+
+	const transformTool1 = meshHandler.createTransformTool(2);
+	transformTool1.addTo(scene)
+	transformTool1.initializeTransformControl(camera, renderer.domElement, render, controls, meshViewer);
+
+	transformTool1.show()
 }
 
 function testing() {
@@ -110,9 +131,8 @@ function testing() {
 	// meshHandler.setTransform(0, 1, new THREE.Vector3(0.5, 0.2, 0.1))
 	// meshHandler.setTransform(4, 1, new THREE.Vector3(0.5, 0.2, 0.1))
 	// meshHandler.setTransform(7, 1, new THREE.Vector3(0.5, 0.2, 0.1))
-	meshHandler.updatePositions();
-	const transformTool = meshHandler.createTransformTool(0);
-	transformTool.addTo(scene)
+	// meshHandler.updatePositions();
+	
 }
 
 function subdivideMesh (scheme) {
@@ -154,7 +174,7 @@ settingsFolder.add(settings, 'vertexSize').min(0.001).max(0.1).step(0.001).onCha
 settingsFolder.add(settings, 'edgeSize').min(0.2).max(5).step(0.05).onChange(settings.edgeResize);
 
 gui.add(settings, 'mesh', ['tetrahedron', 'cube', 'octahedron', 'dodecahedron', 'icosahedron']).onChange(loadMesh);
-gui.add(settings, 'subdivision', ['catmullClark', 'loop △', 'sqrt2 □', 'sqrt3 △', 'doosabin', 'butterfly △']);
+// gui.add(settings, 'subdivision', ['catmullClark', 'loop △', 'sqrt2 □', 'sqrt3 △', 'doosabin', 'butterfly △']);
 gui.add(settings, 'apply');
 loadMesh(settings.mesh);
 
