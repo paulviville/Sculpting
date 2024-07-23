@@ -103,7 +103,10 @@ export default class MeshHandler {
     #newGeneration( vertices, parentVertices, position0 ) {
         const generationId = this.#generations.length;
         const transforms = this.#mesh.addAttribute(this.#mesh.vertex, `transforms${this.#generations.length}`);
-        const position = position0 ?? this.#mesh.addAttribute(this.#mesh.vertex, `position0_${this.#generations.length}`);;
+        const position = this.#mesh.addAttribute(this.#mesh.vertex, `position0_${this.#generations.length}`);;
+        position0?.forEach((p, i) => {
+            position[i] = p.clone();
+        })
         const newGeneration = new Generation(vertices, parentVertices, position, transforms);
         this.#generations.push( newGeneration );
         console.log(newGeneration   )
@@ -190,11 +193,6 @@ export default class MeshHandler {
             vpos.addScaledVector(parentGeneration.position[parents[6]], W2);
             vpos.addScaledVector(parentGeneration.position[parents[7]], W2);
         });
-
-        // generation.parentVertices.forEach(vid => {
-
-        // });
-
     }
 
     /**
@@ -205,8 +203,6 @@ export default class MeshHandler {
     #computeGenerationPositions ( generationId ) {
         const parentGeneration = this.#generations[generationId - 1];
         const generation = this.#generations[generationId];
-
-        console.log(generation, parentGeneration)
 
         generation.vertices.forEach(vid => {
             this.#position[vid] ??= new Vector3;
@@ -221,7 +217,6 @@ export default class MeshHandler {
 
         generation.transforms.forEach((transform, vid) => {
             this.#applyTransform(generation.position[vid], transform);
-            console.log(generationId)
         });
     }
 
@@ -247,7 +242,6 @@ export default class MeshHandler {
         const newVerticesIds = newVertices.map(vd => this.#mesh.cell(this.#mesh.vertex, vd));
         const newGeneration = this.#newGeneration( newVerticesIds, parentVerticesIds );
         this.#computeGenerationInitialPositions( newGeneration );
-        // this.#computeGenerationPositions( newGeneration );
         this.updatePositions();
     }
 
@@ -284,13 +278,11 @@ export default class MeshHandler {
         /// maybe not only for 0, but for generationId
         /// switch loop to (i = i + 1;...)
         if(i == 0) {
-            // this.#computeGenerationPositions(i);
             this.#computeGenerationPositions(i);
             ++i;
         }
         for(i; i < this.#generations.length; ++i) {
             this.#computeGenerationInitialPositions(i);
-            // this.#computeGenerationPositions(i);
             this.#computeGenerationPositions(i);
         }
 
@@ -306,26 +298,39 @@ export default class MeshHandler {
         });
     }
 
-    getInitialPositions ( vertices ) {
-        return vertices.map(vid => {
-            return this.#position0[vid].clone();
-        });      
+    getInitialPositions ( generationId = 0 ) {
+        const parentGeneration = this.#generations[generationId - 1];
+        const generation = this.#generations[generationId];
+
+        return [
+            ...generation.parentVertices.map(vid => {
+                return parentGeneration.position[vid].clone();
+            }),
+            ...generation.vertices.map(vid => {
+                return this.#position0[vid].clone();
+            }),
+        ];
     }
 
-    getTransforms ( vertices, generationId = 0 ) {
-        return vertices.map(vid => {
-            return this.#generations[generationId].transforms[vid]?.clone();
-        });      
+    getTransforms ( generationId = 0 ) {
+        const generation = this.#generations[generationId];
+        return [
+            ...generation.parentVertices.map(vid => {
+                return generation.transforms[vid]?.clone();
+            }),
+            ...generation.vertices.map(vid => {
+                return generation.transforms[vid]?.clone();
+            }),
+        ]
     }
 
     getVertices ( generationId = 0 ) {
-        const vertices = []
+        const generation = this.#generations[generationId];
 
-        for(let i = 0; i <= generationId; ++i) {
-            vertices.push(...this.#generations[i].vertices);
-        }
-
-        return vertices;
+        return [
+            ...generation.parentVertices,
+            ...generation.vertices
+        ];
     }
 
     /**

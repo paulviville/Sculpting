@@ -31,6 +31,7 @@ export default class TransformTool {
         this.#vertices = meshHandler.getVertices( this.#generationId );
 
         this.#update();
+
         this.#createRenderer();
 
         console.log(this.#transforms, this.#positions0)
@@ -42,20 +43,28 @@ export default class TransformTool {
     }
 
     #update ( ) {
-        this.#positions0 = this.#meshHandler.getInitialPositions( this.#vertices );
-        this.#transforms = this.#meshHandler.getTransforms( this.#vertices );
+        this.#positions0 = this.#meshHandler.getInitialPositions( this.#generationId );
+        this.#transforms = this.#meshHandler.getTransforms( this.#generationId );
     }
 
     #updateRenderer ( ) {
         const scale = new THREE.Vector3(this.#size, this.#size, this.#size);
         const matrix = new THREE.Matrix4();
+        // const tempVector = this.#positions0[id].clone();
         const tempVector = new THREE.Vector3();
+        
         matrix.scale(scale);
 
         this.#vertices.forEach((vid, id) => {
-            matrix.setPosition(this.#positions0[id]);
+            tempVector.copy(this.#positions0[id]);
+            if(this.#transforms[id]) {
+                tempVector.add(this.#transforms[id])
+            }
+            matrix.setPosition(tempVector);
             this.#renderer.setMatrixAt(id, matrix);
         });
+        this.#renderer.instanceMatrix.needsUpdate = true;
+        
     }
 
     #updateMatrix ( id ) {
@@ -100,9 +109,9 @@ export default class TransformTool {
     }
 
     #onChange() {
-        // console.log(this.#generationId)
         this.#renderFunc();
         if(this.#transformControl.dragging) {
+            
             this.#computeTransform(this.#targetVertex);
             this.#updateMatrix(this.#targetVertex);
 
@@ -118,7 +127,13 @@ export default class TransformTool {
     }
 
     show ( ) {
+
+        this.#update();
+        this.#updateRenderer();
+        console.log(this.#dummy.position)
         this.#setTarget(this.#targetVertex);
+
+        
 
         this.#scene.add(this.#renderer);
         this.#scene.add(this.#dummy)
@@ -142,10 +157,15 @@ export default class TransformTool {
     }
 
     raycast ( raycaster ) {
-
+        const hit = raycaster.intersectObject(this.#renderer)[0];
+        // console.log(hit.instanceId);
+        if(hit) {
+            this.#setTarget(hit.instanceId);
+        }
     }
 
-    resize ( ) {
-
+    resize ( size ) {
+        this.#size = size;
+        this.#updateRenderer();
     }
 }

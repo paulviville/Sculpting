@@ -68,25 +68,64 @@ const settings = new (function() {
 
 
 	this.mesh = 'octahedron';
-	this.subdivision = 'catmullClark';
-	// this.apply = function () {subdivideMesh(this.subdivision)};
-	this.apply = function () {
+
+	this.nbSubdivs = 0;
+	this.subdivide = function () {
 		meshHandler.subdivide()
 		meshViewer.updateMeshes()
+		++this.nbSubdivs;
 	};
 	
+	this.showTool = false;
+	this.tooldID = 0;
+	this.activeTool;
+	this.tools = [];
+	this.toolSize = 0.05;
+
+	this.toggleTool = function () {
+		if(this.showTool)
+			this.openTool()
+		else
+			this.closeTool()
+	}
+
+	this.openTool = function () {
+
+
+		if(this.activeTool)
+			this.activeTool.hide();
+
+		if(this.tooldID > this.nbSubdivs) {
+			this.tooldID = this.nbSubdivs;
+		}
+
+		if(!this.tools[this.tooldID]) {
+			this.tools[this.tooldID] = meshHandler.createTransformTool(this.tooldID);
+			this.tools[this.tooldID].initializeTransformControl(camera, renderer.domElement, render, controls, meshViewer);
+			this.tools[this.tooldID].addTo(scene);
+			this.tools[this.tooldID].resize(this.toolSize);
+		}
+
+		if(this.showTool)
+			this.tools[this.tooldID].show();
+		this.activeTool = this.tools[this.tooldID];
+	}
+
+	this.closeTool = function() {
+		this.activeTool.hide();
+		this.activeTool = null;
+	}
+
+	this.resizeTool = function() {
+		this.tools[this.tooldID].resize(this.toolSize);
+	}
 });
 
 function loadMesh (mesh) {
 	cmap = loadCMap2('off', Meshes[mesh + '_off']);
 
 	meshHandler = new MeshHandler(cmap);
-	testing()
-	console.log(meshHandler)
-	meshHandler.subdivide()
-	meshHandler.subdivide()
-	meshHandler.subdivide()
-	meshHandler.subdivide()
+
 	meshHandler.updatePositions();
 
 	if(meshViewer)
@@ -106,61 +145,33 @@ function loadMesh (mesh) {
 	});
 	meshViewer.addMeshesTo(scene);
 
-	// const transformTool = meshHandler.createTransformTool(0);
-	// transformTool.addTo(scene)
-	// transformTool.initializeTransformControl(camera, renderer.domElement, render, controls, meshViewer);
-
-	// transformTool.show()
-	// transformTool.hide()
-
-
-	const transformTool1 = meshHandler.createTransformTool(2);
-	transformTool1.addTo(scene)
-	transformTool1.initializeTransformControl(camera, renderer.domElement, render, controls, meshViewer);
-
-	transformTool1.show()
 }
 
-function testing() {
-	// meshHandler.subdivide()
-	// meshHandler.subdivide()
-	// meshHandler.subdivide()
-	// meshHandler.subdivide()
-	// meshHandler.subdivide()
-	// meshHandler.subdivide()
-	// meshHandler.setTransform(0, 1, new THREE.Vector3(0.5, 0.2, 0.1))
-	// meshHandler.setTransform(4, 1, new THREE.Vector3(0.5, 0.2, 0.1))
-	// meshHandler.setTransform(7, 1, new THREE.Vector3(0.5, 0.2, 0.1))
-	// meshHandler.updatePositions();
-	
-}
+const raycaster = new THREE.Raycaster;
+const mouse = new THREE.Vector2;
 
-function subdivideMesh (scheme) {
-	switch(scheme) {
-		case 'catmullClark':
-			catmullClark(cmap);
-			break;
-		case 'loop △':
-			loop(cmap);
-			break;
-		case 'sqrt2 □':
-			sqrt2(cmap);
-			break;
-		case 'sqrt3 △':
-			sqrt3(cmap);
-			break;
-		case 'doosabin':
-			dooSabin(cmap);
-			break;
-		case 'butterfly △':
-			butterfly(cmap);
-			break;	
-		default:
-			break;
+function setMouse(event) {
+	mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+	mouse.y = - (event.clientY / window.innerHeight) * 2 + 1;
+}
+const mouseDown = function(event) {
+	setMouse(event);
+
+	console.log(event.button);
+	if(settings.activeTool && event.button == 1 ){
+		controls.enableZoom = false;
+		console.log(settings.activeTool);
+		raycaster.setFromCamera(mouse, camera);
+		settings.activeTool.raycast(raycaster);
 	}
-	console.log(cmap.nbCells(cmap.vertex))
-	meshViewer.updateMeshes();
 }
+
+const mouseUp = function(event) {
+	controls.enableZoom = true;
+}
+
+window.addEventListener('pointerdown', mouseDown);
+window.addEventListener('pointerup', mouseUp);
 
 const gui = new GUI({autoPlace: true, hideable: true});
 const settingsFolder = gui.addFolder("Settings");
@@ -175,7 +186,10 @@ settingsFolder.add(settings, 'edgeSize').min(0.2).max(5).step(0.05).onChange(set
 
 gui.add(settings, 'mesh', ['tetrahedron', 'cube', 'octahedron', 'dodecahedron', 'icosahedron']).onChange(loadMesh);
 // gui.add(settings, 'subdivision', ['catmullClark', 'loop △', 'sqrt2 □', 'sqrt3 △', 'doosabin', 'butterfly △']);
-gui.add(settings, 'apply');
+gui.add(settings, 'subdivide');
+gui.add(settings, 'tooldID').onChange(settings.openTool.bind(settings));
+gui.add(settings, 'showTool').onChange(settings.toggleTool.bind(settings));
+gui.add(settings, 'toolSize').onChange(settings.resizeTool.bind(settings));
 loadMesh(settings.mesh);
 
 function render()
