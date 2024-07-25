@@ -1,6 +1,8 @@
 import CMap2 from './CMapJS/CMap/CMap2.js';
-import {Vector3} from './CMapJS/Libs/three.module.js';
+import { Vector3, Quaternion } from './CMapJS/Libs/three.module.js';
+import { DualQuaternion } from './DualQuaternion.js';
 import TransformTool from './TransformTool.js';
+
 
 /**
  * @class Generation - a container of subdivision iteration data
@@ -91,7 +93,7 @@ export default class MeshHandler {
         this.#mesh.foreach(this.#mesh.vertex, vd => {
             const vid = this.#mesh.cell(this.#mesh.vertex, vd);
             verticesGen0.push(vid);
-            this.#position0[vid] = this.#position[vid].clone();
+            this.#position0[vid] = DualQuaternion.setFromTranslation(this.#position[vid].clone());
         });
         this.#newGeneration( verticesGen0, [], this.#position0 );
     }
@@ -174,24 +176,29 @@ export default class MeshHandler {
         const parentGeneration = this.#generations[generationId - 1];
 
         const generation = this.#generations[generationId];
+        const DQzeros = new DualQuaternion(
+            new Quaternion(0, 0, 0, 0),
+            new Quaternion(0, 0, 0, 0)
+        );
+
         generation.vertices.forEach(vid => {
-            this.#position0[vid] ??= new Vector3;
+            this.#position0[vid] ??= DQzeros.clone();
 
             const vpos = this.#position0[vid];
             const parents = this.#parents[vid];
 
-            vpos.set(0,0,0);
+            vpos.copy(DQzeros);
 
-            vpos.addScaledVector(parentGeneration.position[parents[0]], W0);
-            vpos.addScaledVector(parentGeneration.position[parents[1]], W0);
+            vpos.addScaledDualQuaternion(parentGeneration.position[parents[0]], W0);
+            vpos.addScaledDualQuaternion(parentGeneration.position[parents[1]], W0);
 
-            vpos.addScaledVector(parentGeneration.position[parents[2]], W1);
-            vpos.addScaledVector(parentGeneration.position[parents[3]], W1);
+            vpos.addScaledDualQuaternion(parentGeneration.position[parents[2]], W1);
+            vpos.addScaledDualQuaternion(parentGeneration.position[parents[3]], W1);
 
-            vpos.addScaledVector(parentGeneration.position[parents[4]], W2);
-            vpos.addScaledVector(parentGeneration.position[parents[5]], W2);
-            vpos.addScaledVector(parentGeneration.position[parents[6]], W2);
-            vpos.addScaledVector(parentGeneration.position[parents[7]], W2);
+            vpos.addScaledDualQuaternion(parentGeneration.position[parents[4]], W2);
+            vpos.addScaledDualQuaternion(parentGeneration.position[parents[5]], W2);
+            vpos.addScaledDualQuaternion(parentGeneration.position[parents[6]], W2);
+            vpos.addScaledDualQuaternion(parentGeneration.position[parents[7]], W2);
         });
     }
 
@@ -205,13 +212,12 @@ export default class MeshHandler {
         const generation = this.#generations[generationId];
 
         generation.vertices.forEach(vid => {
-            this.#position[vid] ??= new Vector3;
-            generation.position[vid] ??= new Vector3;
+            generation.position[vid] ??= new DualQuaternion;
             generation.position[vid].copy(this.#position0[vid]);
         });
 
         generation.parentVertices.forEach(vid => {
-            generation.position[vid] ??= new Vector3;
+            generation.position[vid] ??= new DualQuaternion;
             generation.position[vid].copy(parentGeneration.position[vid]);
         });
 
@@ -229,7 +235,9 @@ export default class MeshHandler {
         if(transform == undefined) 
             return;
 
-        vpos.add(transform);
+        // vpos.add(transform);
+
+        vpos.multiply(transform);
     }
 
      /**
@@ -252,8 +260,10 @@ export default class MeshHandler {
      * @param {Vector3} transform - transform to copy
      */
     setTransform ( vid, generationId, transform ) {
-        this.#generations[generationId].transforms[vid] ??= new Vector3;
+        this.#generations[generationId].transforms[vid] ??= new DualQuaternion;
         this.#generations[generationId].transforms[vid].copy(transform);
+
+        console.log(vid, generationId)
 
         // console.log( this.#generations[generationId].transforms, this.#position, this.#position0)
     }
@@ -286,15 +296,21 @@ export default class MeshHandler {
             this.#computeGenerationPositions(i);
         }
 
+        this.#setPositions();
+    }
+
+    #setPositions ( ) {
         const finalGeneration = this.#generations[this.#generations.length - 1]
         finalGeneration.vertices.forEach(vid => {
             this.#position[vid] ??= new Vector3();
-            this.#position[vid].copy(finalGeneration.position[vid]);
+            this.#position[vid].set(0,0,0);
+            this.#position[vid].copy(finalGeneration.position[vid].transform(this.#position[vid].set(0,0,0)));
         });
 
         finalGeneration.parentVertices.forEach(vid => {
             this.#position[vid] ??= new Vector3();
-            this.#position[vid].copy(finalGeneration.position[vid]);
+            this.#position[vid].set(0,0,0);
+            this.#position[vid].copy(finalGeneration.position[vid].transform(this.#position[vid].set(0,0,0)));
         });
     }
 

@@ -16,6 +16,7 @@ import dooSabin from './CMapJS/Modeling/Subdivision/Surface/DooSabin.js';
 import sqrt2 from './CMapJS/Modeling/Subdivision/Surface/Sqrt2.js';
 import sqrt3 from './CMapJS/Modeling/Subdivision/Surface/Sqrt3.js';
 import butterfly from './CMapJS/Modeling/Subdivision/Surface/Butterfly.js';
+import { DualQuaternion } from './DualQuaternion.js';
 
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0xAAAAAA);
@@ -131,6 +132,12 @@ function loadMesh (mesh) {
 
 	meshHandler = new MeshHandler(cmap);
 
+	
+	// const dq = DualQuaternion.setFromRotationTranslation(
+	// 	new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), 1.0*Math.PI / 3),
+	// 	new THREE.Quaternion(0, 0, 0.25, 0)
+	// ).normalize()
+	// meshHandler.setTransform(0,0, dq);
 	meshHandler.updatePositions();
 
 	if(meshViewer)
@@ -150,6 +157,16 @@ function loadMesh (mesh) {
 	});
 	meshViewer.addMeshesTo(scene);
 
+}
+
+window.transformTest = function(vid, gen) {
+	const dq = DualQuaternion.setFromRotationTranslation(
+		new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), 1.0*Math.PI / 3),
+		new THREE.Quaternion(0, 0, 0.25, 0)
+	).normalize()
+	meshHandler.setTransform(vid,gen, dq);
+	meshHandler.updatePositions();
+	meshViewer.updateMeshes()
 }
 
 const raycaster = new THREE.Raycaster;
@@ -198,6 +215,55 @@ gui.add(settings, 'toolSize').onChange(settings.resizeTool.bind(settings));
 gui.add(settings, 'saveMesh');
 loadMesh(settings.mesh);
 
+const keyHeld = {};
+const defaultKeyDown = function(event){
+	keyHeld[event.code] = true;
+};
+
+const defaultKeyUp = function(event){
+	console.log(event.which, event.code, event.charCode);
+	switch(event.code) {
+		case "Escape": 
+			break;
+		case "Space":
+			break;
+		case "Delete":
+			break;
+		case "KeyR":
+			if(settings.activeTool){
+				settings.activeTool.setMode('rotate')
+			}
+			break;
+		case "KeyL":
+			if(settings.activeTool){
+				settings.activeTool.setSpace('local')
+			}
+			break;
+		case "KeyT":
+			if(settings.activeTool){
+				settings.activeTool.setMode('translate')
+			}
+			break;
+		case "KeyZ":
+			if(settings.activeTool){
+				settings.activeTool.setSpace('world')
+			}
+			break;
+		case "Numpad0":
+			break;
+		case "ArrowRight":
+			break;
+	};
+
+	keyHeld[event.code] = false;
+
+}
+
+window.addEventListener("keydown", defaultKeyDown);
+window.addEventListener("keyup", defaultKeyUp);
+
+
+'rotate'
 function render()
 {
 	renderer.render(scene, camera);
