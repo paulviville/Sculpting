@@ -156,7 +156,7 @@ export default class TransformTool {
 
     }
 
-    raycast ( raycaster ) {
+    raycast ( raycaster ) { 
         const hit = raycaster.intersectObject(this.#renderer)[0];
         // console.log(hit.instanceId);
         if(hit) {

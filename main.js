@@ -2,6 +2,7 @@ import * as THREE from './CMapJS/Libs/three.module.js';
 import * as Meshes from './meshes.js';
 
 import { loadCMap2 } from './CMapJS/IO/SurfaceFormats/CMap2IO.js';
+import { exportCmap2 } from './CMapJS/IO/SurfaceFormats/CMap2IO.js';
 
 import { OrbitControls } from './CMapJS/Libs/OrbitsControls.js';
 import MeshViewer from './MeshViewer.js';
@@ -119,6 +120,10 @@ const settings = new (function() {
 	this.resizeTool = function() {
 		this.tools[this.tooldID].resize(this.toolSize);
 	}
+
+	this.saveMesh = function() {
+		console.log(exportCmap2(cmap, 'off'));
+	}
 });
 
 function loadMesh (mesh) {
@@ -190,6 +195,7 @@ gui.add(settings, 'subdivide');
 gui.add(settings, 'tooldID').onChange(settings.openTool.bind(settings));
 gui.add(settings, 'showTool').onChange(settings.toggleTool.bind(settings));
 gui.add(settings, 'toolSize').onChange(settings.resizeTool.bind(settings));
+gui.add(settings, 'saveMesh');
 loadMesh(settings.mesh);
 
 function render()
