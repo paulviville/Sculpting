@@ -59,7 +59,7 @@ export default class TransformTool {
             const dq = this.#positions0[id].clone();
             const trans = this.#transforms[id]?.clone();
             if(trans) {
-                dq.premultiply(trans);
+                dq.multiply(trans);
             }
             matrix.setPosition(dq.transform(tempVector.set(0, 0, 0).clone()));
             this.#renderer.setMatrixAt(id, matrix);
@@ -74,7 +74,7 @@ export default class TransformTool {
         const dq = this.#positions0[id].clone();
         const trans = this.#transforms[id]?.clone();
         if(trans) {
-            dq.premultiply(trans);
+            dq.multiply(trans);
         }
         matrix.scale(scale);
         matrix.setPosition(dq.transform(tempVector.set(0, 0, 0).clone()));
@@ -87,7 +87,7 @@ export default class TransformTool {
         const dq = this.#positions0[this.#targetVertex].clone();
         this.#transforms[this.#targetVertex] ??= new DualQuaternion();
         const trans = this.#transforms[this.#targetVertex] 
-        dq.premultiply(trans);
+        dq.multiply(trans);
 
         const translation = dq.getTranslation();
         const rotation = dq.getRotation();
@@ -110,24 +110,34 @@ export default class TransformTool {
     }
 
     #computeTransform( id ) {
-        const translation0 = this.#positions0[id].transform(new THREE.Vector3())
-        const translation = this.#dummy.position.clone().sub(translation0)
+        const dq0 = this.#positions0[id].clone();
+        const translation = this.#dummy.position.clone();
+        const rotation = new THREE.Quaternion().setFromEuler(this.#dummy.rotation);
+        const dq1 = DualQuaternion.setFromTranslationRotation(rotation, translation);
+
+        dq0.invert();
+        const dqt = new DualQuaternion();
+        dqt.multiplyDualQuaternions(dq0, dq1);
+        this.#transforms[id].copy(dqt);
 
 
-        const rotation0 = this.#positions0[id].getRotation().invert()
-        const rotation = new THREE.Quaternion().setFromEuler(this.#dummy.rotation)
-        rotation.multiply(rotation0)
-        console.log(rotation0, rotation)
+        // const translation0 = this.#positions0[id].transform(new THREE.Vector3())
 
-        const transform = new DualQuaternion();
-        const DQr = DualQuaternion.setFromRotation(rotation);
-        const DQt = DualQuaternion.setFromTranslation(translation);
-        transform.multiply(DQr)
-        transform.premultiply(DQt)
+
+        // const rotation0 = this.#positions0[id].getRotation().invert()
+        // const rotation = new THREE.Quaternion().setFromEuler(this.#dummy.rotation)
+        // rotation.multiply(rotation0)
+        // console.log(rotation0, rotation)
+
+        // const transform = new DualQuaternion();
+        // const DQr = DualQuaternion.setFromRotation(rotation);
+        // const DQt = DualQuaternion.setFromTranslation(translation);
+        // transform.multiply(DQr)
+        // transform.premultiply(DQt)
 
         // const transform = DualQuaternion.setFromRotationTranslation(rotation, translation)
         // const transform = DualQuaternion.setFromTranslationRotation(rotation, translation)
-        this.#transforms[id].copy(transform);
+        // this.#transforms[id].copy(transform);
         // this.#transforms[this.#targetVertex].copy(this.#dummy.position);
         // this.#transforms[this.#targetVertex].sub(this.#positions0[this.#targetVertex]);
     }
